@@ -99,7 +99,55 @@ SPORTWIZZARD_MOCK=1 node dist/index.js   # or set SPORTWIZZARD_API_KEY
 
 ## Maintainers
 
-Build, smoke and release steps are in [AGENTS.md](https://github.com/sportwizzard/sportwizzard-mcp/blob/main/AGENTS.md).
+This README ships inside the npm package, so keep it free of internal
+hostnames, keys and private notes (the repository is public).
+
+**Layout.** `src/index.ts` is the stdio entry (`dist/index.js`, the npm `bin`);
+`src/httpServer.ts` is the hosted Streamable HTTP entry (stateless, one request
+per POST; Host allow list and bearer-key handling); `src/auth.ts` validates the
+caller's key against the API, caches it and applies the per-key rate limit;
+`src/tools.ts` and `src/server.ts` define and register tools; `src/client.ts`
+is the REST client and `src/mock.ts` the `SPORTWIZZARD_MOCK=1` data.
+`tests/stdio-smoke.mjs` and `tests/http-smoke.mjs` are end-to-end smokes
+against a loopback mock API (no credentials, no production calls).
+
+**Build and verify** (the PR check, `.github/workflows/ci.yml`, runs the same
+pack-and-smoke plus a no-push container build):
+
+```bash
+npm ci --ignore-scripts && npm run build
+release_dir="$(mktemp -d)"
+npm pack --ignore-scripts --pack-destination "$release_dir"
+npm install --prefix "$release_dir/consumer" --omit=dev --ignore-scripts --no-audit --no-fund "$release_dir"/*.tgz
+npm run smoke -- "$release_dir/consumer/node_modules/sportwizzard-mcp/dist/index.js" "$release_dir/smoke.json" "$release_dir"/*.tgz
+npm run smoke:http -- "$release_dir/consumer/node_modules/sportwizzard-mcp/dist/httpServer.js" "$release_dir/http-smoke.json"
+rm -rf "$release_dir"
+```
+
+The stdio smoke checks `tools/list`, `get_odds scope=season` forwarding and a
+snapshot download with history; the HTTP smoke checks `/healthz`, key
+rejection, the Host allow list, `tools/list`, key forwarding and a clean
+SIGTERM exit. Both prove transport and packaging, not live data quality.
+
+**Releasing.**
+
+- Hosted server: `publish-container.yml` publishes a SHA-tagged GHCR image on
+  every push to `main`. It deploys only when that digest is promoted in the
+  Ops `deployment/releases/api.yaml` row, which owns placement, limits and
+  credential references.
+- npm package: bump `version` in `package.json`, run
+  `npm install --package-lock-only`, sync `server.json`, merge to `main`, then
+  run the manual **Publish npm package** workflow (`publish-npm.yml`). It
+  builds once, smokes the packed tarball and publishes those exact bytes
+  through npm trusted publishing (OIDC; no npm token). Publishing npm does
+  not update the hosted container.
+
+**Gotchas.** Hosted runtime settings are `MCP_HTTP_PORT` (default 8091),
+`MCP_ALLOWED_HOSTS`, `AUTH_CACHE_TTL_MS`, `RATE_LIMIT_PER_MIN`,
+`SPORTWIZZARD_SNAPSHOT_URL` and `SPORTWIZZARD_SNAPSHOT_HISTORY_URL`, plus the
+customer settings above. `download_snapshot` writes a file on stdio but returns
+a CDN URL and a command on the hosted server. Never print or commit `~/.npmrc`.
+Open work goes in GitHub issues in this repository.
 
 ## License
 
