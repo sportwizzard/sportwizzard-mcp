@@ -315,7 +315,7 @@ export const MOCK: Record<string, any> = {
     success: true,
     data: [
       {
-        plan: "enterprise",
+        plan: "archmage",
         rateLimitPerMin: 60,
         authenticated: false,
         note: "No API key supplied; showing the effective anonymous plan (pre-billing, unmetered).",
