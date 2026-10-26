@@ -97,51 +97,9 @@ cd sportwizzard-mcp && npm install && npm run build
 SPORTWIZZARD_MOCK=1 node dist/index.js   # or set SPORTWIZZARD_API_KEY
 ```
 
-## Maintainer publishing
+## Maintainers
 
-The hosted HTTP service has a separate container publisher:
-`publish-container.yml` runs on `main`, builds tracked source, and publishes a
-source-labeled GHCR image with a standard
-`release-receipt-publish-container-<sha>` artifact. Promote that digest
-in `sportwizzard-ops/deployment/releases/api.yaml` to deploy through Ops.
-Production placement, resource limits and credentials references belong there.
-Publishing the npm launcher below does not update the hosted container.
-The container build reuses intermediate layers from a dedicated GHCR
-BuildKit cache tag; only the SHA-tagged image digest is the release artifact.
-
-Publishing is a manual GitHub Actions release. First bump `version` in `package.json`, update `package-lock.json` with `npm install --package-lock-only`, synchronize `server.json`, and merge the change to `main`. Then run **Publish npm package** from the repository's Actions tab with `main` selected. The build job verifies package/lock/registry metadata and the unused version, installs dependencies without lifecycle scripts, builds once, and packs a tarball. It installs that tarball in a disposable consumer and runs the mock stdio smoke below. A separate publish job receives OIDC permission, verifies the tarball checksum, and publishes those exact bytes with lifecycle scripts disabled; it does not check out source or install application dependencies. The workflow retains the tarball and smoke receipt and does not run on pushes.
-
-### Package smoke (no production API)
-
-After `npm ci --ignore-scripts` and `npm run build`, pack and install the artifact
-in a temporary consumer directory, then exercise its actual stdio entry point:
-
-```bash
-release_dir="$(mktemp -d)"
-npm pack --ignore-scripts --pack-destination "$release_dir"
-npm install --prefix "$release_dir/consumer" --omit=dev --ignore-scripts --no-audit --no-fund "$release_dir"/*.tgz
-npm run smoke -- "$release_dir/consumer/node_modules/sportwizzard-mcp/dist/index.js" "$release_dir/smoke.json" "$release_dir"/*.tgz
-```
-
-The smoke has a 20-second protocol timeout and uses a loopback mock HTTP API
-with no credentials. It checks `tools/list`, forwards `get_odds scope=season`,
-and downloads/decompresses a snapshot with `include_history=true`. The JSON
-receipt records artifact hash, inputs, server version, outputs and duration.
-It verifies transport, packaging and parameter forwarding; it does not establish
-live API data quality. Retain the receipt, then remove the temporary directory.
-
-The hosted server has its own smoke. It starts the installed tarball's
-`dist/httpServer.js`, the container's entry point, against a loopback mock API
-and checks `/healthz`, key rejection, the Host allow list, `tools/list`, key
-forwarding on a tool call and a clean exit on SIGTERM:
-
-```bash
-npm run smoke:http -- "$release_dir/consumer/node_modules/sportwizzard-mcp/dist/httpServer.js" "$release_dir/http-smoke.json"
-```
-
-The new-owner npm trusted-publisher connection is qualified. Release `sportwizzard-mcp@0.2.1` was published from `main` commit `1803bacf251f25be96330de97e422860c17760fe` by [workflow run 38657304480](https://github.com/sportwizzard-admin/sportwizzard-mcp/actions/runs/38657304480). Its mock stdio package smoke passed, and npm's SLSA provenance binds the artifact to this repository, `publish-npm.yml`, `refs/heads/main`, and that commit. The published artifact integrity matched both the retained workflow artifact and the provenance subject; npm signature verification reported no invalid or missing signatures. Future releases still use the manual **Publish npm package** workflow on `main`. On 2026-10-21 the repository moved to the `sportwizzard` organization; the npm trusted publisher must name `sportwizzard/sportwizzard-mcp` and `publish-npm.yml` before the next release, and CI now runs on GitHub-hosted runners because the repository is public. The previous `adamruehle/sportwizzard-mcp` trusted-publisher connection does not transfer and is not needed for new-owner publishing.
-
-To refresh local npm CLI access, use `npx --yes npm@11 login`, then confirm the identity with `npm whoami`. The installed npm 10 login command crashes in the maintainer environment; npm 11 login is the working refresh path. On Adam's workstation, `~/.npmrc` points to `~/.local/state/sportwizzard/npm/npmrc` (private directory `0700`, file `0600`). Do not recreate the legacy account-secrets path. Keep the symlink and target local, never print or commit the file contents, and do not copy its token into the repository or a Local Agent. The October 16 migration preserved the file bytes, but both pre- and post-migration identity checks returned 401; local CLI reauthentication remains outstanding. Workflow publishing uses separate short-lived OIDC credentials and needs no npm token secret.
+Build, smoke and release steps are in [AGENTS.md](https://github.com/sportwizzard/sportwizzard-mcp/blob/main/AGENTS.md).
 
 ## License
 
