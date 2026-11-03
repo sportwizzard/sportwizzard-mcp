@@ -161,7 +161,7 @@ export const MOCK: Record<string, any> = {
         line: 0.5,
         outcomeCode: "OVER",
         playerName: "Ben Rice",
-        playerTeamName: "New York Yankees",
+        playerCompetitorName: "New York Yankees",
         dfsSource: "chalkboard",
         dfsMultiplier: 1.78,
         dfsSelectionLabel: "Ben Rice Total Bases Over 0.5",
