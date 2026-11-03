@@ -62,11 +62,12 @@ export const TOOLS: ToolDef[] = [
   {
     name: "list_events",
     description:
-      "List sporting events / fixtures (the spine of the API). Each event carries home/away team, start time, status and whether live odds exist (hasOdds). Filter by league, team, status or start-time window, then use the returned event id with get_event_odds. Paginate with cursor.",
+      "List sporting events / fixtures (the spine of the API). Each event carries its competition (`league` slug), start time, status, whether live odds exist (hasOdds) and `participants`: who takes part, ordered by side. A participant is {side, sideLabel, position, name}: team sports have two competitors, side 1 `home` and side 2 `away`; tennis, MMA and esports have side 1 and side 2 with no label (order is arbitrary); doubles have two players per side (position 1 and 2); golf lists the whole field with no sides. `competitorId` / `playerId` on each participant are sent only to an API key on a paid plan. Filter by competition, competitor (team_id), player (player_id), status or start-time window, then use the returned event id with get_event_odds. Paginate with cursor.",
     path: "/api/v1/events",
     queryParams: [
-      { name: "league", type: "string", description: "League slug (e.g. mlb, wnba, mls, pga-tour, fifa-world-cup). See list_leagues." },
-      { name: "team_id", type: "string", description: "Filter to events involving this team UUID (from list_teams)." },
+      { name: "league", type: "string", description: "Competition slug (e.g. mlb, wnba, mls, pga-tour, fifa-world-cup). See list_leagues." },
+      { name: "team_id", type: "string", description: "Filter to events where this competitor (team UUID from list_teams) is a participant." },
+      { name: "player_id", type: "string", description: "Filter to events where this player (UUID from list_players) is a participant, e.g. a tennis player's matches or a golfer's tournaments." },
       { name: "status", type: "string", description: "Event status filter (e.g. scheduled, live, final)." },
       { name: "starts_after", type: "string", description: "ISO-8601 timestamp; only events starting at/after this time." },
       { name: "starts_before", type: "string", description: "ISO-8601 timestamp; only events starting at/before this time." },
@@ -78,7 +79,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_event",
     description:
-      "Full detail for a single event: teams, start time, status, league, venue, season year, final scores (when final), and rich game context — weather, confirmed/projected lineups, probable pitchers, and officials where the league provides them. The model-builder's pre-game context endpoint. Use an event id from list_events.",
+      "Full detail for a single event: participants (as in list_events, plus each side's final `score` once the box score exists), start time, status, competition, venue, season year, and rich game context — weather, confirmed/projected lineups, probable pitchers, and officials where the league provides them. The model-builder's pre-game context endpoint. Use an event id from list_events.",
     path: "/api/v1/events/{event_id}",
     pathParams: [
       { name: "event_id", type: "string", description: "Event UUID (from list_events)." },
@@ -88,7 +89,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_event_stats",
     description:
-      "The box score for a single event: every player's stat line (e.g. batting_stats/pitching_stats JSON per player) plus the team-level result row (scores, team stats). Use an event id from list_events; works for final and in-progress events that have stats.",
+      "The box score for a single event: every player's stat line (e.g. batting_stats/pitching_stats JSON per player) plus the competitor-level result row (scores, team stats; `homeId` is side 1 and `awayId` side 2). Use an event id from list_events; works for final and in-progress events that have stats.",
     path: "/api/v1/events/{event_id}/stats",
     pathParams: [
       { name: "event_id", type: "string", description: "Event UUID (from list_events)." },
@@ -98,7 +99,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_event_odds",
     description:
-      "Get every sportsbook price for a single event: one flat row per book x market x selection, with american+decimal price, line, side, player/team, and SportWizzard's devigged fair odds where available. Use an event id from list_events. An event id can also be a SEASON ANCHOR — the synthetic, teamless event every season-long future for a competition hangs off — in which case this returns that competition's whole cross-book futures board (rows carrying marketScope=SEASON plus period/segment), which runs to tens of thousands of rows; prefer get_odds with scope=season and a league/sportsbook filter for that.",
+      "Get every sportsbook price for a single event: one flat row per book x market x selection, with american+decimal price, line, `outcomeCode` (OVER, UNDER, HOME, AWAY, DRAW, YES ...), `side` (1 or 2: which participant side the outcome is about; absent for totals, draws and futures), the team or player name as the source sent it, and SportWizzard's devigged fair odds where available. Side 1 and side 2 match the event's participants. `playerId` on player props is sent only to an API key on a paid plan. Use an event id from list_events. An event id can also be a SEASON ANCHOR — the synthetic event with no participants that every season-long future for a competition hangs off — in which case this returns that competition's whole cross-book futures board (rows carrying marketScope=SEASON plus period/segment), which runs to tens of thousands of rows; prefer get_odds with scope=season and a league/sportsbook filter for that.",
     path: "/api/v1/events/{event_id}/odds",
     pathParams: [
       { name: "event_id", type: "string", description: "Event UUID (from list_events)." },
@@ -110,17 +111,17 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_odds",
     description:
-      "Core odds query. Returns a flat array of book prices, narrowed by any combination of event_id, player_id, team_id, sportsbook, market, league and scope. Called with no filters it paginates hard — narrow to at least one entity. Paginate with cursor.\n\n" +
+      "Core odds query. Returns a flat array of book prices, narrowed by any combination of event_id, player_id, team_id, sportsbook, market, competition (league) and scope. Rows carry `outcomeCode` and `side` (1/2) as described in get_event_odds. Called with no filters it paginates hard — narrow to at least one entity. Paginate with cursor.\n\n" +
       "FUTURES live here: pass scope=season for season-long futures (division/conference/championship winners, award odds, team win totals, season leaders, full-season player props — a PLAYER_TOTAL_PASS_YARDS at scope=season is a ~3,750.5 SEASON line, not a game line), or scope=tournament for golf/tennis outrights. Futures rows are described by three ORTHOGONAL axes: `marketScope` (SEASON | TOURNAMENT — the anchor the market hangs off; omitted entirely on ordinary game rows), `period` (the window within that anchor: REG_SEASON settles at the end of the regular season, FULL runs through the playoffs) and `segment` (the slice of the competition: AFC_EAST, NFC_WEST, AL, NL, SEC ... — present only when the market is segment-scoped). READ `segment` — it is load-bearing: all 32 NFL DIVISION_WINNER selections share ONE season-anchor eventId, so ignoring segment turns 8 separate division races into one nonsensical 32-team market.\n\n" +
-      "Futures gotchas: winner/award markets are CATEGORICAL — one YES selection per competitor with teamSide \"NONE\", and most books offer no NO side, so these are not two-way markets. `eventStartTime` on a futures row is the SEASON-ANCHOR / settlement date (e.g. the Super Bowl date), NOT a kickoff. Every book's futures for a competition converge on the same season eventId, so scope=season + league is already a cross-book board. Futures are deliberately EXCLUDED from get_edges and get_arbitrage — season markets never enter de-vig or edge math (a product decision, not a gap).",
+      "Futures gotchas: winner/award markets are CATEGORICAL — one YES selection per competitor with no `side`, and most books offer no NO side, so these are not two-way markets. `eventStartTime` on a futures row is the SEASON-ANCHOR / settlement date (e.g. the Super Bowl date), NOT a kickoff. Every book's futures for a competition converge on the same season eventId, so scope=season + league is already a cross-book board. Futures are deliberately EXCLUDED from get_edges and get_arbitrage — season markets never enter de-vig or edge math (a product decision, not a gap).",
     path: "/api/v1/odds",
     queryParams: [
       { name: "event_id", type: "string", description: "Scope to one event (UUID from list_events)." },
       { name: "player_id", type: "string", description: "Scope to one player (UUID from list_players)." },
-      { name: "team_id", type: "string", description: "Scope to one team (UUID from list_teams)." },
+      { name: "team_id", type: "string", description: "Scope to events where this competitor (team UUID from list_teams) is a participant." },
       { name: "sportsbook", type: "string", description: "Sportsbook / DFS source id (e.g. draftkings, prizepicks). See list_sportsbooks." },
       { name: "market", type: "string", description: "Market FAMILY filter, matched as a substring (e.g. MONEYLINE, SPREAD, PLAYER_TOTAL, TEAM_TOTAL, CATEGORICAL). The specific token — DIVISION_WINNER, AWARD_MVP, SEASON_LEADER_PASS_YARDS, TEAM_TOTAL_WINS — is each row's `marketSubtype`, not this filter: winner/award futures live under market=CATEGORICAL. See list_markets." },
-      { name: "league", type: "string", description: "League slug filter." },
+      { name: "league", type: "string", description: "Competition slug filter (see list_leagues)." },
       SCOPE,
       CURSOR,
       LIMIT,
@@ -141,7 +142,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_team_odds",
     description:
-      "All current book prices for a single team across its events and markets. Use a team id from list_teams. Paginate with cursor.",
+      "All current book prices on events where this competitor (team) is a participant. Use a team id from list_teams. Paginate with cursor.",
     path: "/api/v1/teams/{team_id}/odds",
     pathParams: [
       { name: "team_id", type: "string", description: "Team UUID (from list_teams)." },
@@ -154,10 +155,10 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_edges",
     description:
-      "SportWizzard's edge finder: DFS/book offers that are +EV versus the devigged fair market, with the edge %, the book(s) setting fair value, and per-book odds. Filter by league, source (DFS/book), minimum edge, or a single event. Paginate with cursor. GAME markets only: season and tournament futures are excluded by design — they never enter de-vig or edge math, so an empty result here says nothing about futures coverage (query those with get_odds scope=season).",
+      "SportWizzard's edge finder: DFS/book offers that are +EV versus the devigged fair market, with the edge %, the book(s) setting fair value, and per-book odds. Each row carries the event's `participants` and the offer's `outcomeCode` (OVER/UNDER ...); `playerId` is sent only to an API key on a paid plan. Filter by league, source (DFS/book), minimum edge, or a single event. Paginate with cursor. GAME markets only: season and tournament futures are excluded by design — they never enter de-vig or edge math, so an empty result here says nothing about futures coverage (query those with get_odds scope=season).",
     path: "/api/v1/edges",
     queryParams: [
-      { name: "league", type: "string", description: "League slug filter." },
+      { name: "league", type: "string", description: "Competition slug filter (see list_leagues)." },
       { name: "source", type: "string", description: "DFS/book source id to find edges for (e.g. prizepicks, underdog)." },
       { name: "min_edge", type: "number", description: "Minimum edge threshold (e.g. 5 for 5%)." },
       { name: "event_id", type: "string", description: "Scope to a single event UUID." },
@@ -169,7 +170,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_arbitrage",
     description:
-      "Arbitrage scanner: cross-book opportunities with a guaranteed profit, including each leg (source, selection, odds) and the optimal stake fractions. Filter by type (two_way | three_way) and minimum profit %. Paginate with cursor. GAME markets only: season and tournament futures are excluded by design (categorical winner/award markets have no NO side to arb against and never enter de-vig math).",
+      "Arbitrage scanner: cross-book opportunities with a guaranteed profit, including the event's `participants`, each leg (source, selection, `outcomeCode`, `side` 1/2 where the leg is about one side, odds) and the optimal stake fractions. Player and source-reference IDs are sent only to an API key on a paid plan. Filter by type (two_way | three_way) and minimum profit %. Paginate with cursor. GAME markets only: season and tournament futures are excluded by design (categorical winner/award markets have no NO side to arb against and never enter de-vig math).",
     path: "/api/v1/arbitrage",
     queryParams: [
       { name: "type", type: "string", description: "Arbitrage type.", enum: ["two_way", "three_way"] },
@@ -184,11 +185,11 @@ export const TOOLS: ToolDef[] = [
   {
     name: "list_players",
     description:
-      "List players (reference resource). Filter by league and/or team. Returns player UUIDs to use with get_player_odds and get_player_stats. Paginate with cursor.",
+      "List players (reference resource). Filter by competition (league) and/or competitor (team). Returns player UUIDs to use with get_player_odds and get_player_stats. Paginate with cursor.",
     path: "/api/v1/players",
     queryParams: [
-      { name: "league", type: "string", description: "League slug filter." },
-      { name: "team", type: "string", description: "Team UUID filter." },
+      { name: "league", type: "string", description: "Competition slug filter (see list_leagues)." },
+      { name: "team", type: "string", description: "Competitor (team) UUID filter." },
       CURSOR,
       LIMIT,
     ],
@@ -197,10 +198,10 @@ export const TOOLS: ToolDef[] = [
   {
     name: "list_teams",
     description:
-      "List teams (reference resource). Filter by league. Returns team UUIDs to use with list_events(team_id), get_team_odds and get_team_stats. Paginate with cursor.",
+      "List teams, SportWizzard's competitors (reference resource). Filter by competition (league). Returns competitor UUIDs to use with list_events(team_id), get_team_odds and get_team_stats. Paginate with cursor.",
     path: "/api/v1/teams",
     queryParams: [
-      { name: "league", type: "string", description: "League slug filter." },
+      { name: "league", type: "string", description: "Competition slug filter (see list_leagues)." },
       CURSOR,
       LIMIT,
     ],
@@ -276,7 +277,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "list_leagues",
     description:
-      "List the leagues currently covered (with live markets). Reference/discovery — call this to learn valid `league` filter values.",
+      "List the competitions (league slugs) currently covered with live markets. Reference/discovery — call this to learn valid `league` filter values.",
     path: "/api/v1/leagues",
     mockKey: "leagues",
   },
