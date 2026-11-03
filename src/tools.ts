@@ -79,7 +79,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_event",
     description:
-      "Full detail for a single event: participants (as in list_events, plus each side's final `score` once the box score exists), the latest live `state` when a source reported one ({status, period, clock, side1Score, side2Score, source, observedAt}), startTime, status, competition, venue, season year, and rich game context — weather, confirmed/projected lineups, probable pitchers, and officials where the league provides them. The model-builder's pre-game context endpoint. Use an event id from list_events.",
+      "Full detail for a single event: participants (as in list_events, plus each side's final `score` once the box score exists), the latest live `state` when a source reported one ({status, period, clock, side1Score, side2Score, source, observedAt}), startTime, status, competition, venue, season year, and rich game context — weather, confirmed/projected lineups, probable pitchers, and officials where the competition provides them. The model-builder's pre-game context endpoint. Use an event id from list_events.",
     path: "/api/v1/events/{event_id}",
     pathParams: [
       { name: "event_id", type: "string", description: "Event UUID (from list_events)." },
@@ -89,7 +89,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_event_stats",
     description:
-      "The box score for a single event: every player's stat line (e.g. batting_stats/pitching_stats JSON per player) plus the competitor-level result row (side1Id/side2Id, side1Score/side2Score, team stats). Use an event id from list_events; works for final and in-progress events that have stats.",
+      "The box score for a single event: every player's stat line (e.g. batting_stats/pitching_stats JSON per player) plus the competitor-level result row (side1Id/side2Id, side1Score/side2Score, competitor stats). Use an event id from list_events; works for final and in-progress events that have stats.",
     path: "/api/v1/events/{event_id}/stats",
     pathParams: [
       { name: "event_id", type: "string", description: "Event UUID (from list_events)." },
@@ -223,7 +223,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_competitor_stats",
     description:
-      "Per-game stats and results for a single competitor (side1Id/side2Id and side1Score/side2Score, result, team stat JSON per event). Use a competitor id from list_competitors; optionally scope to one season.",
+      "Per-game stats and results for a single competitor (side1Id/side2Id and side1Score/side2Score, result, competitor stat JSON per event). Use a competitor id from list_competitors; optionally scope to one season.",
     path: "/api/v1/competitors/{competitor_id}/stats",
     pathParams: [
       { name: "competitor_id", type: "string", description: "Competitor UUID (from list_competitors)." },
