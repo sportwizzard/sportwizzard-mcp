@@ -66,15 +66,15 @@ Set `SPORTWIZZARD_MOCK=1` to get canned sample responses — useful for wiring u
 
 | Tool | What it does |
 |---|---|
-| `list_events` / `get_event` | Events/fixtures with their participants — filter by competition, competitor, player, status, time; full detail incl. each side's score, weather, lineups, probable pitchers. |
+| `list_events` / `get_event` | Events/fixtures with their participants — filter by competition, competitor, player, status, time; full detail incl. each side's score, the latest live `state`, weather, lineups, probable pitchers. |
 | `get_event_stats` | Box score: every player's stat line + competitor results for one event. |
-| `get_odds` / `get_event_odds` / `get_player_odds` / `get_team_odds` | Current prices, scoped by event, player, competitor (team), sportsbook, market, or competition (league). `get_odds` also takes `scope`: `event` (game markets), `season` (season-long futures), `tournament` (golf/tennis outrights); omit for all. |
+| `get_odds` / `get_event_odds` / `get_player_odds` / `get_competitor_odds` | Current prices, scoped by event, player, competitor, sportsbook, market, or competition. `get_odds` also takes `scope`: `event` (game markets), `season` (season-long futures), `tournament` (golf/tennis outrights); omit for all. |
 | `get_edges` | +EV edges vs. devigged fair market (competition, source, min_edge filters). |
 | `get_arbitrage` | Arbitrage opportunities with legs and stake fractions (two/three-way). |
-| `list_players` / `list_teams` / `get_player_stats` / `get_team_stats` | Reference data and season/historical stats. |
+| `list_players` / `list_competitors` / `get_player_stats` / `get_competitor_stats` | Reference data and season/historical stats. |
 | `get_player_game_logs` | Bulk per-game stat rows — the model-training feed. |
-| `download_snapshot` | Save the full live board to disk (tens of MB gzip). `include_history: true` also populates every selection's `priceHistory` (same schema; 5 credits flat vs 1). |
-| `list_sportsbooks` / `list_leagues` / `list_markets` / `status` | Discover source IDs, covered competitions and supported market types; check customer API availability. |
+| `download_snapshot` | Save the full live board to disk (tens of MB gzip). `include_history: true` also populates every selection's `priceHistory` rows (same schema; 5 credits flat vs 1). |
+| `list_sportsbooks` / `list_competitions` / `list_markets` / `status` | Discover source IDs, covered competitions and supported market types; check customer API availability. |
 | `get_account_usage` | Your plan tier, rate limit, and monthly usage. |
 
 Every response uses the envelope `{ success, data, nextCursor, meta }`; when `nextCursor` is present the tool appends a `_paging` hint so agents know to continue.
@@ -90,9 +90,24 @@ Events, edges and arbitrage rows list who takes part as `participants`, ordered 
 | Tennis doubles | two players per side, `position` 1 and 2 |
 | Golf | the whole field, `{name}` only, no sides |
 
-`get_event` adds each side's final `score`. Odds rows say which side an outcome is about with `side` (`1` or `2`; absent for totals, draws and futures) and carry the outcome itself as `outcomeCode` (`OVER`, `UNDER`, `HOME`, `AWAY`, `DRAW`, `YES`, …). Team and player names on a row are as the sportsbook sent them.
+`get_event` adds each side's final `score` and, when a source reported one, the latest live `state` (`{status, period, clock, side1Score, side2Score, source, observedAt}`).
 
-IDs depend on your key: with an API key on a paid plan, each participant also has `competitorId` (a team) or `playerId` (a person), and odds, edge and arbitrage rows carry `playerId` and source references. Without a key, or on the Free plan, you get names and sides. `team_id` and `player_id` filters match events where that competitor or player is a participant.
+Each odds row is one outcome of a selection:
+
+- `side`: `1` or `2`, the event side the outcome is about; absent for totals, draws, "neither" and futures.
+- `outcomeCode`: SportWizzard's fixed list: `OVER`, `UNDER`, `YES`, `NO`, `WIN` (a moneyline leg is `WIN` with its `side`), `DRAW`, `NEITHER`, `WIN_OR_DRAW`, `EITHER`, `ODD`, `EVEN`, `SCORE` (read `side1Score`/`side2Score`), `RANGE`, `OTHER`, `LABEL` (a categorical answer only the selection label explains).
+- `statType`: the fixed stat list (`points`, `rush_yards`, …).
+- `outcomeParticipants`: `[{kind: "competitor" | "player", name}]`, names exactly as the sportsbook sent them. An outcome about a side with no name has none; read the event participant on that `side`.
+
+Markets carry `phase` (`PRE` or `LIVE`). With `include_history`, each selection's `priceHistory` is a list of rows, oldest first, one per run of an unchanged price:
+
+```json
+{"observedAt": "2026-11-03T12:31:02Z", "lastObservedAt": "2026-11-03T12:40:15Z", "priceAmerican": -110, "priceDecimal": 1.9091}
+```
+
+A row may also carry `dfsMultiplier`, `suspended: true` and, on exchanges, `liquidityTier`.
+
+IDs depend on your key: with an API key on a paid plan, each participant and outcome participant also has `competitorId` (a team) or `playerId` (a person), and odds, edge and arbitrage rows carry `playerId` and source references. Without a key, or on the Free plan, you get names and sides. `competitor_id` and `player_id` filters match events where that competitor or player is a participant.
 
 ### Futures (season-scope markets)
 
