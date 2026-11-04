@@ -250,12 +250,12 @@ export const TOOLS: ToolDef[] = [
   {
     name: "download_snapshot",
     description:
-      "Download the full live odds board to a file on disk instead of returning it (it is too large for a context window). Provide an absolute save_path: a path ending in .gz keeps the gzip; any other path writes decompressed JSON. Pass include_history=true to include each selection's priceHistory (line movement: each row {observedAt, lastObservedAt, priceAmerican, priceDecimal, dfsMultiplier, suspended (only when true), liquidityTier (exchanges)}, oldest first, one row per run of an unchanged price; costs 5 credits flat instead of 1 — priceHistory is null without it). Markets carry `phase` (PRE or LIVE) and exchange selections their current `liquidityTier`. Returns the saved path, byte count and ETag. Re-poll cheaply by passing the returned etag: unchanged data returns not_modified without downloading (each variant has its own etag).",
+      "Download the full live odds board to a file on disk instead of returning it (it is too large for a context window). Provide an absolute save_path: a path ending in .gz keeps the gzip; any other path writes decompressed JSON. Pass include_history=true to include each selection's selectionPrice (line movement: each row {observedAt, lastObservedAt, priceAmerican, priceDecimal, dfsMultiplier, suspended (only when true), liquidityTier (exchanges)}, oldest first, one row per run of an unchanged price; costs 5 credits flat instead of 1 — selectionPrice is null without it). Markets carry `phase` (PRE or LIVE) and exchange selections their current `liquidityTier`. Returns the saved path, byte count and ETag. Re-poll cheaply by passing the returned etag: unchanged data returns not_modified without downloading (each variant has its own etag).",
     path: "/api/v1/snapshot",
     localParams: [
       { name: "save_path", type: "string", description: "Absolute file path to write the snapshot to. `.gz` suffix keeps it gzip-compressed; otherwise decompressed JSON is written." },
       { name: "etag", type: "string", description: "Optional: the etag from a previous download. If the board hasn't changed the server returns 304 and nothing is downloaded." },
-      { name: "include_history", type: "boolean", description: "true = populate every selection's priceHistory entries (5 credits flat vs 1). Identical schema either way — priceHistory is null when false." },
+      { name: "include_history", type: "boolean", description: "true = populate every selection's selectionPrice entries (5 credits flat vs 1). Identical schema either way — selectionPrice is null when false." },
     ],
     mockKey: "snapshot_file",
     remoteSafe: false,
@@ -309,12 +309,12 @@ export const TOOLS: ToolDef[] = [
 export const REMOTE_SNAPSHOT_TOOL: ToolDef = {
   name: "download_snapshot",
   description:
-    "Get the full live odds board as a direct CDN download_url with the current etag and a ready-to-run save_command for the save_path you provide. Run the command in your own shell; the file downloads straight from the CDN, not through this server. Pass include_history=true for the variant with each selection's priceHistory populated (line movement: each row {observedAt, lastObservedAt, priceAmerican, priceDecimal, dfsMultiplier, suspended (only when true), liquidityTier (exchanges)}, oldest first, one row per run of an unchanged price; priceHistory is null without it). Re-check cheaply by passing the previous etag: if the board hasn't changed you get not_modified and skip the download (each variant has its own etag).",
+    "Get the full live odds board as a direct CDN download_url with the current etag and a ready-to-run save_command for the save_path you provide. Run the command in your own shell; the file downloads straight from the CDN, not through this server. Pass include_history=true for the variant with each selection's selectionPrice populated (line movement: each row {observedAt, lastObservedAt, priceAmerican, priceDecimal, dfsMultiplier, suspended (only when true), liquidityTier (exchanges)}, oldest first, one row per run of an unchanged price; selectionPrice is null without it). Re-check cheaply by passing the previous etag: if the board hasn't changed you get not_modified and skip the download (each variant has its own etag).",
   path: "/api/v1/snapshot",
   localParams: [
     { name: "save_path", type: "string", description: "Absolute file path ON YOUR MACHINE where you intend to save it; used to template save_command. `.gz` suffix keeps gzip; otherwise the command decompresses to JSON." },
     { name: "etag", type: "string", description: "Optional: etag from a previous call. Unchanged board returns not_modified — no download needed." },
-    { name: "include_history", type: "boolean", description: "true = the with-history CDN object (every selection's priceHistory populated). Identical schema either way." },
+    { name: "include_history", type: "boolean", description: "true = the with-history CDN object (every selection's selectionPrice populated). Identical schema either way." },
   ],
   mockKey: "snapshot_file",
   snapshotUrlMode: true,

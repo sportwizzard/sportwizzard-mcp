@@ -73,7 +73,7 @@ Set `SPORTWIZZARD_MOCK=1` to get canned sample responses — useful for wiring u
 | `get_arbitrage` | Arbitrage opportunities with legs and stake fractions (two/three-way). |
 | `list_players` / `list_competitors` / `get_player_stats` / `get_competitor_stats` | Reference data and season/historical stats. |
 | `get_player_game_logs` | Bulk per-game stat rows — the model-training feed. |
-| `download_snapshot` | Save the full live board to disk (tens of MB gzip). `include_history: true` also populates every selection's `priceHistory` rows (same schema; 5 credits flat vs 1). |
+| `download_snapshot` | Save the full live board to disk (tens of MB gzip). `include_history: true` also populates every selection's `selectionPrice` rows (same schema; 5 credits flat vs 1). |
 | `list_sportsbooks` / `list_competitions` / `list_markets` / `status` | Discover source IDs, covered competitions and supported market types; check customer API availability. |
 | `get_account_usage` | Your plan tier, rate limit, and monthly usage. |
 
@@ -99,7 +99,7 @@ Each odds row is one outcome of a selection:
 - `statType`: the fixed stat list (`points`, `rush_yards`, …).
 - `outcomeParticipants`: `[{kind: "competitor" | "player", name}]`, names exactly as the sportsbook sent them. An outcome about a side with no name has none; read the event participant on that `side`.
 
-Markets carry `phase` (`PRE` or `LIVE`). With `include_history`, each selection's `priceHistory` is a list of rows, oldest first, one per run of an unchanged price:
+Markets carry `phase` (`PRE` or `LIVE`). With `include_history`, each selection's `selectionPrice` is a list of rows, oldest first, one per run of an unchanged price:
 
 ```json
 {"observedAt": "2026-11-03T12:31:02Z", "lastObservedAt": "2026-11-03T12:40:15Z", "priceAmerican": -110, "priceDecimal": 1.9091}
