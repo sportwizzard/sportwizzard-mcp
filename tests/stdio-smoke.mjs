@@ -26,7 +26,7 @@ let failMeasurement = false;
 const odds = [{ marketScope: 'SEASON', period: 'REG_SEASON', segment: 'AFC_EAST',
   marketSubtype: 'DIVISION_WINNER', selection: 'Buffalo Bills', priceAmerican: -180 }];
 const snapshot = { data: { eventMarkets: [{ id: 'smoke-market', selections: [
-  { priceHistory: [{ observedAt: '2026-11-03T12:31:02Z', lastObservedAt: '2026-11-03T12:40:15Z', priceAmerican: -110, priceDecimal: 1.9091 }] },
+  { selectionPrice: [{ observedAt: '2026-11-03T12:31:02Z', lastObservedAt: '2026-11-03T12:40:15Z', priceAmerican: -110, priceDecimal: 1.9091 }] },
 ] }] } };
 const api = createServer((req, res) => {
   if (req.url === '/api/v1/account/measurement/mcp-tool-success') {
