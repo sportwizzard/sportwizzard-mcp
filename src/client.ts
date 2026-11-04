@@ -143,7 +143,7 @@ export async function downloadSnapshot(
 
   if (cfg.mock) {
     const body = JSON.stringify({
-      data: { eventMarkets: [{ id: "mock", source: "prizepicks", league: "mlb" }] },
+      data: { eventMarkets: [{ id: "mock", source: "prizepicks", competition: "mlb" }] },
       _mock: true,
     });
     const src = Readable.from([body]);

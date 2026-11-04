@@ -1,6 +1,8 @@
 // Canned sample responses for SPORTWIZZARD_MOCK=1, so a developer can try the
 // tools without an API key or network. Fixtures mirror real v1 envelope shapes
 // (captured from api.sportwizzard.com) but are trimmed and clearly synthetic.
+// Mock mode has no API key, so events, odds, edges and arbitrage use the
+// signed-out shape: participant names and sides, no competitorId/playerId.
 
 export const MOCK: Record<string, any> = {
   status: {
@@ -9,7 +11,7 @@ export const MOCK: Record<string, any> = {
     meta: { count: 1, updated: "2026-07-09T16:58:29Z" },
     _mock: true,
   },
-  leagues: {
+  competitions: {
     success: true,
     data: ["mlb", "brazil-sa", "fifa-world-cup", "wnba", "pga-tour", "mls"],
     meta: { count: 6, updated: "2026-07-09T16:58:29Z" },
@@ -42,18 +44,30 @@ export const MOCK: Record<string, any> = {
     data: [
       {
         id: "04618737-e571-44d9-befe-24c1d8b1be3f",
-        homeTeamId: "7d0a80b1-138a-11f1-aba1-de512ebea802",
-        homeTeamName: "Tampa Bay Rays",
-        awayTeamId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
-        awayTeamName: "New York Yankees",
         startTime: "2026-07-09T17:10Z",
         status: "scheduled",
-        league: "mlb",
+        competition: "mlb",
         hasOdds: true,
+        participants: [
+          { side: 1, sideLabel: "home", position: 1, name: "Tampa Bay Rays" },
+          { side: 2, sideLabel: "away", position: 1, name: "New York Yankees" },
+        ],
+      },
+      // Tennis: sides with no label, because order is arbitrary.
+      {
+        id: "55aaddff-d914-4417-b4d9-2c10596f13bd",
+        startTime: "2026-11-03T13:00Z",
+        status: "scheduled",
+        competition: "tennis",
+        hasOdds: true,
+        participants: [
+          { side: 1, position: 1, name: "Brandon Nakashima" },
+          { side: 2, position: 1, name: "Matteo Berrettini" },
+        ],
       },
     ],
     nextCursor: "MTc4MzYxNzAwMDAwMHwwNDYxODczNy1lNTcxLTQ0ZDktYmVmZS0yNGMxZDhiMWJlM2Y",
-    meta: { count: 1 },
+    meta: { count: 2 },
     _mock: true,
   },
   odds: {
@@ -62,7 +76,7 @@ export const MOCK: Record<string, any> = {
       {
         id: "b9445260-2841-4c38-9b8d-0598229ca565:ballybet:SPREAD:019f40db-e347-7a25-abc4",
         sportsbook: "ballybet",
-        league: "wnba",
+        competition: "wnba",
         eventId: "b9445260-2841-4c38-9b8d-0598229ca565",
         market: "SPREAD",
         marketSubtype: "SPREAD",
@@ -71,9 +85,9 @@ export const MOCK: Record<string, any> = {
         priceAmerican: 190,
         priceDecimal: 2.9,
         line: -16.5,
-        side: "HOME",
-        teamSide: "HOME",
-        teamName: "Atlanta Dream",
+        outcomeCode: "WIN",
+        side: 1,
+        outcomeParticipants: [{ kind: "competitor", name: "Atlanta Dream" }],
         suspended: false,
         eventStartTime: "2026-07-10T00:00",
         updated: "2026-07-09T16:58:04Z",
@@ -83,11 +97,11 @@ export const MOCK: Record<string, any> = {
       // DIVISION_WINNER selections share this one season-anchor eventId, so
       // `segment` is what separates the 8 division races; `eventStartTime` is
       // the season anchor / settlement date, not a kickoff. Categorical
-      // market: one YES selection per team, teamSide "NONE", no NO side.
+      // market: one YES selection per competitor, no `side`, no NO side.
       {
         id: "b2e737f7-dfb6-4535-bdc4-852ce6b8d255:betonline:DIVISION_WINNER:01a01e15-a58c-7092-8a5b",
         sportsbook: "betonline",
-        league: "nfl",
+        competition: "nfl",
         eventId: "b2e737f7-dfb6-4535-bdc4-852ce6b8d255",
         market: "CATEGORICAL",
         marketSubtype: "DIVISION_WINNER",
@@ -95,9 +109,8 @@ export const MOCK: Record<string, any> = {
         selection: "Buffalo Bills",
         priceAmerican: -180,
         priceDecimal: 1.56,
-        side: "YES",
-        teamSide: "NONE",
-        teamName: "Buffalo Bills",
+        outcomeCode: "YES",
+        outcomeParticipants: [{ kind: "competitor", name: "Buffalo Bills" }],
         suspended: false,
         eventStartTime: "2027-01-10T18:00",
         updated: "2026-08-20T16:33:20Z",
@@ -109,7 +122,7 @@ export const MOCK: Record<string, any> = {
       {
         id: "00063747-5880-422e-8552-149dc68805ae:betmgm:TOURNAMENT_WINNER:019fec53-c223-794f",
         sportsbook: "betmgm",
-        league: "pga-tour",
+        competition: "pga-tour",
         eventId: "00063747-5880-422e-8552-149dc68805ae",
         market: "CATEGORICAL",
         marketSubtype: "TOURNAMENT_WINNER",
@@ -117,9 +130,9 @@ export const MOCK: Record<string, any> = {
         selection: "Xander Schauffele",
         priceAmerican: 1400,
         priceDecimal: 15.0,
-        side: "XANDER SCHAUFFELE",
-        playerId: "744d092e-ec17-435d-967c-3815c4f4f827",
+        outcomeCode: "WIN",
         playerName: "Xander Schauffele",
+        outcomeParticipants: [{ kind: "player", name: "Xander Schauffele" }],
         suspended: false,
         eventStartTime: "2026-08-30T21:00",
         updated: "2026-08-13T11:05:43Z",
@@ -135,19 +148,20 @@ export const MOCK: Record<string, any> = {
     data: [
       {
         id: "04618737-...|PLAYER_TOTAL_TOTAL_BASES|FULL|0.5|pid:7ebca4f0-...|OVER",
-        league: "mlb",
+        competition: "mlb",
         eventId: "04618737-e571-44d9-befe-24c1d8b1be3f",
-        eventHomeTeam: "Tampa Bay Rays",
-        eventAwayTeam: "New York Yankees",
+        participants: [
+          { side: 1, sideLabel: "home", position: 1, name: "Tampa Bay Rays" },
+          { side: 2, sideLabel: "away", position: 1, name: "New York Yankees" },
+        ],
         eventStartTime: "2026-07-09T17:10Z",
         market: "PLAYER_TOTAL_TOTAL_BASES",
         statType: "total_bases",
         period: "FULL",
         line: 0.5,
-        side: "OVER",
-        playerId: "7ebca4f0-138a-11f1-aba1-de512ebea802",
+        outcomeCode: "OVER",
         playerName: "Ben Rice",
-        playerTeamName: "New York Yankees",
+        playerCompetitorName: "New York Yankees",
         dfsSource: "chalkboard",
         dfsMultiplier: 1.78,
         dfsSelectionLabel: "Ben Rice Total Bases Over 0.5",
@@ -169,16 +183,18 @@ export const MOCK: Record<string, any> = {
         id: "f1e05c22-...|MONEYLINE_3WAY|FULL|REG|ML",
         type: "three_way",
         profitPercent: 4.49,
-        league: "fifa-world-cup",
+        competition: "fifa-world-cup",
         eventId: "f1e05c22-e63a-4d73-8a4b-caafcfc2e546",
-        eventHomeTeam: "France",
-        eventAwayTeam: "Morocco",
+        participants: [
+          { side: 1, sideLabel: "home", position: 1, name: "France" },
+          { side: 2, sideLabel: "away", position: 1, name: "Morocco" },
+        ],
         eventStartTime: "2026-07-09T20:00Z",
         lastSeen: "2026-07-09T16:58:31Z",
         selections: [
-          { source: "thescore", outcome: "HOME", selectionLabel: "France", odds: 700, stakeFraction: 0.2747 },
-          { source: "betmgm", outcome: "AWAY", selectionLabel: "Morocco", odds: 1200, stakeFraction: 0.169 },
-          { source: "draftkings", outcome: "DRAW", selectionLabel: "Draw", odds: 260, stakeFraction: 0.5563 },
+          { source: "thescore", marketType: "MONEYLINE_3WAY", period: "FULL", outcomeCode: "WIN", side: 1, selectionLabel: "France", odds: 700, stakeFraction: 0.2747 },
+          { source: "betmgm", marketType: "MONEYLINE_3WAY", period: "FULL", outcomeCode: "WIN", side: 2, selectionLabel: "Morocco", odds: 1200, stakeFraction: 0.169 },
+          { source: "draftkings", marketType: "MONEYLINE_3WAY", period: "FULL", outcomeCode: "DRAW", selectionLabel: "Draw", odds: 260, stakeFraction: 0.5563 },
         ],
       },
     ],
@@ -192,8 +208,8 @@ export const MOCK: Record<string, any> = {
       {
         id: "7ebca4f0-138a-11f1-aba1-de512ebea802",
         name: "Ben Rice",
-        league: "mlb",
-        teamId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
+        competition: "mlb",
+        competitorId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
         position: "1B",
       },
     ],
@@ -201,14 +217,14 @@ export const MOCK: Record<string, any> = {
     meta: { count: 1 },
     _mock: true,
   },
-  teams: {
+  competitors: {
     success: true,
     data: [
       {
         id: "7d0a80b1-138a-11f1-aba1-de512ebea802",
         name: "Tampa Bay Rays",
         abbreviation: "TB",
-        league: "mlb",
+        competition: "mlb",
       },
     ],
     nextCursor: null,
@@ -220,19 +236,17 @@ export const MOCK: Record<string, any> = {
     data: [
       {
         id: "6968414b-57e4-4761-ba2b-f80a254e008e",
-        homeTeamId: "7d0a80b1-138a-11f1-aba1-de512ebea802",
-        homeTeamName: "Tampa Bay Rays",
-        awayTeamId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
-        awayTeamName: "New York Yankees",
         startTime: "2026-07-09T02:10:00Z",
         status: "final",
-        league: "mlb",
+        competition: "mlb",
         hasOdds: false,
         venueId: "71a0f05b-525b-41c0-81a6-64b64c48832b",
         seasonYear: 2026,
-        homeScore: 4,
-        awayScore: 3,
-        result: 1,
+        participants: [
+          { side: 1, sideLabel: "home", position: 1, name: "Tampa Bay Rays", score: 4 },
+          { side: 2, sideLabel: "away", position: 1, name: "New York Yankees", score: 3 },
+        ],
+        state: { status: "final", source: "caesars", observedAt: "2026-07-09T05:01:44Z" },
         context: {
           weather: { condition: "Clear", temp_f: 78, wind_mph: 9, wind_dir: "Out To CF" },
           probable_pitchers: { home: "Shane Baz", away: "Carlos Rodón" },
@@ -249,14 +263,14 @@ export const MOCK: Record<string, any> = {
     data: [
       {
         eventId: "6968414b-57e4-4761-ba2b-f80a254e008e",
-        teams: [
+        competitors: [
           {
             eventId: "6968414b-57e4-4761-ba2b-f80a254e008e",
-            homeId: "7d0a80b1-138a-11f1-aba1-de512ebea802",
-            awayId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
-            league: "mlb",
-            homeScore: 4,
-            awayScore: 3,
+            side1Id: "7d0a80b1-138a-11f1-aba1-de512ebea802",
+            side2Id: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
+            competition: "mlb",
+            side1Score: 4,
+            side2Score: 3,
             result: 1,
             stats: null,
           },
@@ -265,7 +279,7 @@ export const MOCK: Record<string, any> = {
           {
             eventId: "6968414b-57e4-4761-ba2b-f80a254e008e",
             playerId: "7ebca4f0-138a-11f1-aba1-de512ebea802",
-            teamId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
+            competitorId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
             date: "2026-07-09T02:10:00Z",
             data: {
               batting_stats: { ab: 4, h: 2, hr: 1, rbi: 2, bb: 0, so: 1 },
@@ -277,16 +291,16 @@ export const MOCK: Record<string, any> = {
     meta: { count: 1 },
     _mock: true,
   },
-  team_stats: {
+  competitor_stats: {
     success: true,
     data: [
       {
         eventId: "6968414b-57e4-4761-ba2b-f80a254e008e",
-        homeId: "7d0a80b1-138a-11f1-aba1-de512ebea802",
-        awayId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
-        league: "mlb",
-        homeScore: 4,
-        awayScore: 3,
+        side1Id: "7d0a80b1-138a-11f1-aba1-de512ebea802",
+        side2Id: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
+        competition: "mlb",
+        side1Score: 4,
+        side2Score: 3,
         result: 1,
         stats: null,
       },
@@ -300,7 +314,7 @@ export const MOCK: Record<string, any> = {
       {
         eventId: "6968414b-57e4-4761-ba2b-f80a254e008e",
         playerId: "7ebca4f0-138a-11f1-aba1-de512ebea802",
-        teamId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
+        competitorId: "7d0a7fdb-138a-11f1-aba1-de512ebea802",
         date: "2026-07-09T02:10:00Z",
         data: {
           batting_stats: { ab: 4, h: 2, hr: 1, rbi: 2, bb: 0, so: 1 },
@@ -331,7 +345,7 @@ export const MOCK: Record<string, any> = {
         playerId: "7ebca4f0-138a-11f1-aba1-de512ebea802",
         playerName: "Ben Rice",
         season: 2026,
-        league: "mlb",
+        competition: "mlb",
         stats: { games: 88, hits: 92, homeRuns: 19, rbi: 55, avg: 0.264 },
       },
     ],
