@@ -142,7 +142,7 @@ export function buildServer(cfg: ClientConfig, tools: ToolDef[] = TOOLS): Server
           etag,
           size_bytes_compressed: size ? Number(size) : undefined,
           format: withHistory
-            ? "full live board WITH every selection's selectionPrice, refreshed ~every 30s; .gz save_path keeps the gzip, other paths save decompressed JSON (~10x larger)"
+            ? "full live board WITH every selection's selectionPrice, refreshed ~every 5 min; .gz save_path keeps the gzip, other paths save decompressed JSON (~10x larger)"
             : "full live board (selectionPrice null on every selection — pass include_history=true for line movement), refreshed ~every 30s; .gz save_path keeps the gzip, other paths save decompressed JSON (~10x larger)",
           save_command: saveCommand,
           instructions: "Run save_command in your own shell on the machine where you want the file. The download goes straight from the CDN to your disk — it does not pass through this MCP server and will not enter your context window. Keep the etag and pass it on the next call to skip unchanged downloads.",
