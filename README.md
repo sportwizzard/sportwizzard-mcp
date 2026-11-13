@@ -16,7 +16,7 @@ codex mcp add sportwizzard --transport http --url https://mcp.sportwizzard.com/m
   --header "Authorization: Bearer sw_live_your_api_key_here"
 ```
 
-The hosted server is a thin proxy: your key is forwarded to the SportWizzard API, which enforces auth and rate limits. All 20 tools work on both transports. (`download_snapshot` on the hosted server returns a CDN download URL + a ready-to-run command your agent executes locally; on stdio it writes the file directly.)
+The hosted server is a thin proxy: your key is forwarded to the SportWizzard API, which enforces auth and rate limits. All 20 tools work on both transports. (`download_snapshot` on the hosted server returns a ready-to-run `save_command` your agent executes locally, plus the CDN `download_url` when the download is public; with an API key and `include_history=true` the command uses the keyed history route instead. On stdio it writes the file directly.)
 
 Successful authenticated live tool calls send a best-effort account-usage
 receipt. The measurement request contains no tool arguments or result data.
@@ -176,7 +176,7 @@ SIGTERM exit. Both prove transport and packaging, not live data quality.
 `MCP_ALLOWED_HOSTS`, `AUTH_CACHE_TTL_MS`, `RATE_LIMIT_PER_MIN`,
 `SPORTWIZZARD_SNAPSHOT_URL` and `SPORTWIZZARD_SNAPSHOT_HISTORY_URL`, plus the
 customer settings above. `download_snapshot` writes a file on stdio but returns
-a CDN URL and a command on the hosted server. Never print or commit `~/.npmrc`.
+a `save_command` (and a CDN URL when public) on the hosted server. Never print or commit `~/.npmrc`.
 Open work goes in GitHub issues in this repository.
 
 ## License
