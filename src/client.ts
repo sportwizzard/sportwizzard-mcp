@@ -160,7 +160,12 @@ export async function downloadSnapshot(
   let res: Response;
   try {
     const qs = includeHistory ? "?include_history=true" : "";
-    res = await fetch(cfg.baseUrl + "/api/v1/snapshot" + qs, { headers });
+    res = await fetch(cfg.baseUrl + "/api/v1/snapshot" + qs, { headers, redirect: "manual" });
+    const location = res.headers.get("location");
+    if (res.status >= 300 && res.status < 400 && location) {
+      // Paid history is a short-lived private link. Fetch it without the key.
+      res = await fetch(location, { headers: { "User-Agent": USER_AGENT } });
+    }
   } catch (e: any) {
     throw new SportWizzardError(`Network error downloading snapshot: ${e?.message ?? e}`);
   }
