@@ -115,14 +115,20 @@ export function buildServer(cfg: ClientConfig, tools: ToolDef[] = TOOLS): Server
     if (def.name === "download_snapshot" && def.snapshotUrlMode) {
       const savePath = String(args.save_path ?? "/tmp/sportwizzard-snapshot.json.gz");
       const withHistory = args.include_history === true || args.include_history === "true";
-      const url = withHistory
-        ? (process.env.SPORTWIZZARD_SNAPSHOT_HISTORY_URL ?? "https://data.sportwizzard.com/snapshot-with-history.json.gz")
-        : (process.env.SPORTWIZZARD_SNAPSHOT_URL ?? "https://data.sportwizzard.com/snapshot.json.gz");
+      // Price history is paid. With an API key the history comes from the keyed route, which
+      // answers 302 to a short-lived private link (the key never goes to the storage host).
+      const keyed = withHistory && Boolean(cfg.apiKey);
+      const url = keyed
+        ? `${cfg.baseUrl}/api/v1/snapshot?include_history=true`
+        : withHistory
+          ? (process.env.SPORTWIZZARD_SNAPSHOT_HISTORY_URL ?? "https://data.sportwizzard.com/snapshot-with-history.json.gz")
+          : (process.env.SPORTWIZZARD_SNAPSHOT_URL ?? "https://data.sportwizzard.com/snapshot.json.gz");
       try {
-        const head = await fetch(url, { method: "HEAD" });
-        if (!head.ok) return errorResult(`Snapshot CDN returned HTTP ${head.status}.`);
-        const etag = head.headers.get("etag") ?? undefined;
-        const size = head.headers.get("content-length") ?? undefined;
+        // A keyed history call is charged, so it is not probed with HEAD first.
+        const head = keyed ? undefined : await fetch(url, { method: "HEAD" });
+        if (head && !head.ok) return errorResult(`Snapshot CDN returned HTTP ${head.status}.`);
+        const etag = head?.headers.get("etag") ?? undefined;
+        const size = head?.headers.get("content-length") ?? undefined;
         if (args.etag && etag && String(args.etag) === etag) {
           const result = { not_modified: true, etag, note: "Board unchanged since your last download — nothing to do." };
           await reportSuccessfulMcpToolUse(cfg, result);
@@ -134,18 +140,25 @@ export function buildServer(cfg: ClientConfig, tools: ToolDef[] = TOOLS): Server
         const gz = savePath.endsWith(".gz");
         const quotedPath = quotePosixShellArgument(savePath);
         const quotedUrl = quotePosixShellArgument(url);
-        const saveCommand = gz
-          ? `curl -sS -H 'Accept-Encoding: gzip' -o ${quotedPath} ${quotedUrl}`
-          : `curl -sS -o ${quotedPath} ${quotedUrl}`;
+        // The keyed route answers the stored bytes (.gz) or a 302 (history, switched off). The
+        // key is read from SPORTWIZZARD_API_KEY in the agent's shell, never printed here.
+        const keyedCommand = `u=$(curl -sS ${gz ? "" : "--compressed "}-H "X-Api-Key: $SPORTWIZZARD_API_KEY" -o ${quotedPath} -w '%{redirect_url}' ${quotedUrl}) && if [ -n "$u" ]; then curl -sS ${gz ? "" : "--compressed "}-o ${quotedPath} "$u"; fi`;
+        const saveCommand = keyed
+          ? keyedCommand
+          : gz
+            ? `curl -sS -H 'Accept-Encoding: gzip' -o ${quotedPath} ${quotedUrl}`
+            : `curl -sS -o ${quotedPath} ${quotedUrl}`;
         const result = {
-          download_url: url,
+          download_url: keyed ? undefined : url,
           etag,
           size_bytes_compressed: size ? Number(size) : undefined,
           format: withHistory
             ? "full live board WITH every selection's selectionPrice, refreshed ~every 5 min; .gz save_path keeps the gzip, other paths save decompressed JSON (~10x larger)"
             : "full live board (selectionPrice null on every selection — pass include_history=true for line movement), refreshed ~every 30s; .gz save_path keeps the gzip, other paths save decompressed JSON (~10x larger)",
           save_command: saveCommand,
-          instructions: "Run save_command in your own shell on the machine where you want the file. The download goes straight from the CDN to your disk — it does not pass through this MCP server and will not enter your context window. Keep the etag and pass it on the next call to skip unchanged downloads.",
+          instructions: keyed
+            ? "Run save_command in your own shell where SPORTWIZZARD_API_KEY is exported (paid history, charged per call). The download goes straight from SportWizzard storage to your disk and does not pass through this MCP server."
+            : "Run save_command in your own shell on the machine where you want the file. The download goes straight from the CDN to your disk — it does not pass through this MCP server and will not enter your context window. Keep the etag and pass it on the next call to skip unchanged downloads.",
         };
         await reportSuccessfulMcpToolUse(cfg, result);
         return okResult(result);
