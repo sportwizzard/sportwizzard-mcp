@@ -94,15 +94,16 @@ export const MOCK: Record<string, any> = {
       },
       // A SEASON-scope future. `marketScope` and `segment` appear ONLY on
       // non-EVENT rows (game rows above omit both entirely). All 32 NFL
-      // DIVISION_WINNER selections share this one season-anchor eventId, so
+      // DIVISION_WINNER selections share this one seasonId (eventId is null on futures), so
       // `segment` is what separates the 8 division races; `eventStartTime` is
-      // the season anchor / settlement date, not a kickoff. Categorical
+      // the season's end date, not a kickoff. Categorical
       // market: one YES selection per competitor, no `side`, no NO side.
       {
         id: "b2e737f7-dfb6-4535-bdc4-852ce6b8d255:betonline:DIVISION_WINNER:01a01e15-a58c-7092-8a5b",
         sportsbook: "betonline",
         competition: "nfl",
-        eventId: "b2e737f7-dfb6-4535-bdc4-852ce6b8d255",
+        eventId: null,
+        seasonId: "b2e737f7-dfb6-4535-bdc4-852ce6b8d255",
         market: "CATEGORICAL",
         marketSubtype: "DIVISION_WINNER",
         period: "REG_SEASON",

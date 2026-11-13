@@ -113,11 +113,11 @@ IDs depend on your key: with an API key on a paid plan, each participant and out
 
 `get_odds` with `scope=season` returns season-long futures — division/conference/championship winners, award odds, team win totals, season leaders and full-season player props. Three orthogonal axes describe them:
 
-- **`marketScope`** — which anchor the market hangs off: `SEASON` or `TOURNAMENT`. Omitted entirely on ordinary game rows.
-- **`period`** — the window within that anchor: `REG_SEASON` (settles at the end of the regular season) or `FULL` (runs through the playoffs).
-- **`segment`** — which slice of the competition: `AFC_EAST`, `NL`, `SEC`, … Present only when the market is segment-scoped, and load-bearing: all 32 NFL `DIVISION_WINNER` selections share **one** season-anchor `eventId`, so without `segment` they read as a single 32-team race instead of 8 divisions.
+- **`marketScope`** — what the market is about: `SEASON` or `TOURNAMENT`. Omitted entirely on ordinary game rows.
+- **`period`** — the window within that season: `REG_SEASON` (settles at the end of the regular season) or `FULL` (runs through the playoffs).
+- **`segment`** — which slice of the competition: `AFC_EAST`, `NL`, `SEC`, … Present only when the market is segment-scoped, and load-bearing: all 32 NFL `DIVISION_WINNER` selections share **one** `seasonId` (their `eventId` is null), so without `segment` they read as a single 32-team race instead of 8 divisions.
 
-Notes: winner/award markets are categorical (one `YES` selection per competitor, no `side`, usually no NO side); `eventStartTime` on a futures row is the season anchor / settlement date, **not** a kickoff; every book's futures for a competition share the same season `eventId`; and futures are deliberately excluded from `get_edges` / `get_arbitrage` (they never enter de-vig or edge math). Scope matching is exact — `season` does not include `TOURNAMENT` — and an invalid value returns HTTP 400 naming the valid ones.
+Notes: winner/award markets are categorical (one `YES` selection per competitor, no `side`, usually no NO side); `eventStartTime` on a futures row is the season's end date, **not** a kickoff; every book's futures for a competition share the same `seasonId`, and `eventId` is null; and futures are deliberately excluded from `get_edges` / `get_arbitrage` (they never enter de-vig or edge math). Scope matching is exact — `season` does not include `TOURNAMENT` — and an invalid value returns HTTP 400 naming the valid ones.
 
 ## From source
 
