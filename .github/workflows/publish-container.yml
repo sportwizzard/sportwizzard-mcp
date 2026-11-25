@@ -108,4 +108,4 @@ jobs:
           name: release-receipt-publish-container-${{ github.sha }}
           path: ${{ runner.temp }}/release-receipt/release-receipt.json
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 30
