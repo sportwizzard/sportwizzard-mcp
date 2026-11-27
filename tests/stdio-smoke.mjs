@@ -35,6 +35,10 @@ const api = createServer((req, res) => {
     return res.end();
   }
   requests.push(req.url);
+  if (req.url?.startsWith('/api/v1/odds?event_id=')) {
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify({ success: true, data: [], nextCursor: 'event-page-2' }));
+  }
   if (req.url === '/api/v1/odds?scope=failed') {
     res.end(JSON.stringify({ success: false, error: { message: 'fixture failure' } }));
     return;
@@ -110,6 +114,15 @@ try {
   failMeasurement = false;
   assert.equal(measurementUnavailable.success, true,
     'measurement endpoint failures must not break successful tool output');
+  const eventId = 'ef13f797-8d8b-4bef-b0ba-ba647493e410';
+  const eventFirst = payload(await client.callTool({ name: 'get_event_odds', arguments: { event_id: eventId } }));
+  assert.equal(eventFirst.nextCursor, 'event-page-2');
+  const eventSecond = await client.callTool({ name: 'get_event_odds',
+    arguments: { event_id: eventId, cursor: eventFirst.nextCursor, limit: 2 } });
+  assert.notEqual(eventSecond.isError, true);
+  const eventTooWide = await client.callTool({ name: 'get_event_odds',
+    arguments: { event_id: eventId, limit: 5000 } });
+  assert.equal(eventTooWide.isError, true);
   const savedPath = join(work, 'snapshot.json.gz');
   const downloaded = payload(await client.callTool({ name: 'download_snapshot',
     arguments: { save_path: savedPath, include_history: true } }));
@@ -122,9 +135,11 @@ try {
   assert.deepEqual(requests, [
     '/api/v1/status', '/api/v1/sportsbooks', '/api/v1/markets',
     '/api/v1/odds?scope=season', '/api/v1/odds?scope=failed', '/api/v1/odds?scope=season',
+    '/api/v1/odds?event_id=ef13f797-8d8b-4bef-b0ba-ba647493e410&limit=10',
+    '/api/v1/odds?event_id=ef13f797-8d8b-4bef-b0ba-ba647493e410&cursor=event-page-2&limit=2',
     '/api/v1/snapshot?include_history=true',
   ]);
-  assert.equal(measurements.length, 6, 'only successful authenticated live tool calls are measured');
+  assert.equal(measurements.length, 8, 'only successful authenticated live tool calls are measured');
   assert(measurements.every(item => item.method === 'POST' && item.key === 'smoke-key' && item.body === ''));
   assert(!requests.includes('/api/v1/account/measurement/mcp-tool-success?'));
 
@@ -179,7 +194,7 @@ try {
     ]);
     const keylessResult = payload(await keylessClient.callTool({ name: 'get_odds', arguments: { scope: 'season' } }));
     assert.equal(keylessResult.success, true);
-    assert.equal(measurements.length, 6, 'keyless live calls are never measured');
+    assert.equal(measurements.length, 8, 'keyless live calls are never measured');
   } finally {
     await keylessClient.close();
     await keylessServer.close();
@@ -196,7 +211,7 @@ try {
     const hostilePath = join(work, "snapshot'; touch command-was-injected; #.json.gz");
     const remoteResult = payload(await remoteClient.callTool({ name: 'download_snapshot',
       arguments: { save_path: hostilePath } }));
-    assert.equal(measurements.length, 7,
+    assert.equal(measurements.length, 9,
       'a reachable hosted snapshot URL counts as a successful authenticated tool result');
     await execFileAsync('sh', ['-c', remoteResult.save_command], { cwd: work });
     assert.equal(await readFile(hostilePath, 'utf8'), 'fixture-snapshot');

@@ -14,6 +14,7 @@ export interface ToolParam {
   type: ParamType;
   description: string;
   enum?: string[];
+  required?: boolean;
 }
 
 export interface ToolDef {
@@ -99,10 +100,12 @@ export const TOOLS: ToolDef[] = [
   {
     name: "get_event_odds",
     description:
-      "Get every sportsbook price for a single event: one flat row per book x market x selection, with american+decimal price, line, `outcomeCode` from SportWizzard's fixed list (OVER, UNDER, YES, NO, WIN, DRAW, NEITHER, WIN_OR_DRAW, EITHER, ODD, EVEN, SCORE, RANGE, OTHER, LABEL; a moneyline leg is WIN with its side), `statType` from the fixed stat list, `side` (1 or 2: which participant side the outcome is about; absent for totals, draws, neither and futures), `side1Score`/`side2Score` on exact-score outcomes, `outcomeParticipants` ([{kind: competitor or player, name}] as the sportsbook sent them; an outcome about a side with no name has none, so read the event participant on that side), and SportWizzard's devigged fair odds where available. Side 1 and side 2 match the event's participants. `playerId` and outcome participant `competitorId`/`playerId` are sent only to an API key on a paid plan. Use an event id from list_events. Season-long futures have no event; get them with get_odds and scope=season plus a competition/sportsbook filter.",
-    path: "/api/v1/events/{event_id}/odds",
-    pathParams: [
-      { name: "event_id", type: "string", description: "Event UUID (from list_events)." },
+      "Get sportsbook prices for one event, one row per book, market and selection. Rows carry prices, line, outcomeCode, statType, and outcome participants as supplied by the sportsbook. A moneyline leg is WIN, with side 1 or 2 matching the event participants. The response is paginated. Pass nextCursor as cursor for more prices, or use get_odds to filter by sportsbook or market family.",
+    path: "/api/v1/odds",
+    queryParams: [
+      { name: "event_id", type: "string", description: "Event UUID from list_events.", required: true },
+      CURSOR,
+      { name: "limit", type: "integer", description: "Maximum markets per page (default 10, maximum 50)." },
     ],
     mockKey: "odds",
   },
