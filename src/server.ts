@@ -43,6 +43,7 @@ function inputSchema(def: ToolDef) {
     const s: any = { type: jsonSchemaType(p.type), description: p.description };
     if (p.enum) s.enum = p.enum;
     properties[p.name] = s;
+    if (p.required) required.push(p.name);
   }
   return {
     type: "object" as const,
@@ -204,6 +205,20 @@ export function buildServer(cfg: ClientConfig, tools: ToolDef[] = TOOLS): Server
     const query: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(args)) {
       if (!pathNames.has(k)) query[k] = v;
+    }
+
+    if (def.name === "get_event_odds") {
+      const eventId = query.event_id ?? query.id;
+      if (typeof eventId !== "string" || !/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(eventId)) {
+        return errorResult("event_id must be an event UUID from list_events.");
+      }
+      query.event_id = eventId.toLowerCase();
+      delete query.id;
+      const limit = query.limit ?? 10;
+      if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 50) {
+        return errorResult("limit must be an integer from 1 to 50.");
+      }
+      query.limit = limit;
     }
 
     // Mock mode: return canned data, no network, no key required.

@@ -7,7 +7,7 @@
     "url": "https://github.com/sportwizzard/sportwizzard-mcp",
     "source": "github"
   },
-  "version": "0.4.0",
+  "version": "0.4.1",
   "remotes": [
     {
       "type": "streamable-http",
@@ -15,7 +15,7 @@
       "headers": [
         {
           "name": "Authorization",
-          "description": "Bearer <api-key> \u2014 free self-serve keys at https://sportwizzard.com/account (API Keys tab), no card required",
+          "description": "Bearer <api-key> — free self-serve keys at https://sportwizzard.com/account (API Keys tab), no card required",
           "isRequired": true,
           "isSecret": true
         }
@@ -27,7 +27,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "sportwizzard-mcp",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "transport": {
         "type": "stdio"
       },
